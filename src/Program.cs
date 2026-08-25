@@ -10,6 +10,8 @@ class Program
             "echo",
             "type"
         };
+
+        
     
         while (isRunning)
         {
@@ -28,35 +30,13 @@ class Program
                 {
                     Console.WriteLine($"{commandType} is a shell builtin");
                 }
+                else if (GetExecutablePath(commandType) is string executablePath)
+                {
+                    Console.WriteLine($"{commandType} is {executablePath}");
+                }
                 else
                 {
-                    var path = Environment.GetEnvironmentVariable("PATH");
-
-                    bool found = false;
-
-                    foreach (var dir in path.Split(Path.PathSeparator))
-                    {
-                        var fullPath = Path.Combine(dir, commandType);
-                        if (File.Exists(fullPath))
-                        {
-                            UnixFileMode fileMode = File.GetUnixFileMode(fullPath);
-
-                            bool isExecutable = (fileMode & UnixFileMode.UserExecute) != 0 ||
-                                                (fileMode & UnixFileMode.GroupExecute) != 0 ||
-                                                (fileMode & UnixFileMode.OtherExecute) != 0;
-
-                            if (isExecutable)
-                            {
-                                Console.WriteLine($"{commandType} is {fullPath}");
-                                found = true;  
-                            }
-                        }
-                    }
-
-                    if (!found)
-                    {
-                        Console.WriteLine($"{commandType}: not found");
-                    }
+                    Console.WriteLine($"{commandType}: not found");
                 }
             }
             else if (command.StartsWith("echo"))
@@ -69,4 +49,28 @@ class Program
             }
         }
     }
+    public static string GetExecutablePath(string command)
+        {
+            var path = Environment.GetEnvironmentVariable("PATH");
+
+            foreach (var dir in path.Split(Path.PathSeparator))
+            {
+                var fullPath = Path.Combine(dir, command);
+                if (File.Exists(fullPath))
+                {
+                    UnixFileMode fileMode = File.GetUnixFileMode(fullPath);
+
+                    bool isExecutable = (fileMode & UnixFileMode.UserExecute) != 0 ||
+                                        (fileMode & UnixFileMode.GroupExecute) != 0 ||
+                                        (fileMode & UnixFileMode.OtherExecute) != 0;
+
+                    if (isExecutable)
+                    {
+                        return fullPath;
+                    }
+                }
+            }
+
+            return null;
+        }
 }
