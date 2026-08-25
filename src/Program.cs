@@ -72,7 +72,19 @@ class Program
                 string path = command.Split(' ')[1];
                 try
                 {
-                   Directory.SetCurrentDirectory(path); 
+                    if (path == "~")
+                    {
+                        string homeDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+                        if (homeDirectory != null)
+                        {
+                            Directory.SetCurrentDirectory(homeDirectory);
+                        }
+                    }
+                    else
+                    {
+                        Directory.SetCurrentDirectory(path); 
+                    }
                 }
                 catch
                 {
