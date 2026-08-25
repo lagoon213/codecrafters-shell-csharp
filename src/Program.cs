@@ -5,17 +5,20 @@ class Program
         bool isRunning = true;
 
         string exitCommand = "exit";
+        string echoCommand = "echo";
     
         while (isRunning)
         {
             Console.Write("$ ");
 
             string command = Console.ReadLine();
-            
-
-            if (command == exitCommand)
+            if (command.StartsWith(exitCommand))
             {
-                isRunning = false;
+                break;
+            }
+            if (command.StartsWith(echoCommand))
+            {
+                Console.WriteLine(command.Substring(echoCommand.Length + 1));
             }
             else
             {
