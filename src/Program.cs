@@ -51,7 +51,7 @@ class Program
                 
                 var startInfo = new ProcessStartInfo();
 
-                startInfo.FileName = executablePath;
+                startInfo.FileName = arguments[0];
 
                 for (int i = 1; i < arguments.Length; i++)
                 {
@@ -80,7 +80,7 @@ class Program
                     {
                         return fullPath;
                     }
-                    
+
                     UnixFileMode fileMode = File.GetUnixFileMode(fullPath);
 
                     bool isExecutable = (fileMode & UnixFileMode.UserExecute) != 0 ||
