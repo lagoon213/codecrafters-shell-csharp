@@ -30,7 +30,7 @@ class Program
                 }
                 else
                 {
-                    Console.WriteLine($"{command}: command not found");
+                    Console.WriteLine($"{commandType}: command not found");
                 }
             }
             else if (command.StartsWith("echo"))
