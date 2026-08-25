@@ -30,7 +30,33 @@ class Program
                 }
                 else
                 {
-                    Console.WriteLine($"{commandType}: not found");
+                    var path = Environment.GetEnvironmentVariable("PATH");
+
+                    bool found = false;
+
+                    foreach (var dir in path.Split(Path.PathSeparator))
+                    {
+                        var fullPath = Path.Combine(dir, commandType);
+                        if (File.Exists(fullPath))
+                        {
+                            UnixFileMode fileMode = File.GetUnixFileMode(fullPath);
+
+                            bool isExecutable = (fileMode & UnixFileMode.UserExecute) != 0 ||
+                                                (fileMode & UnixFileMode.GroupExecute) != 0 ||
+                                                (fileMode & UnixFileMode.OtherExecute) != 0;
+
+                            if (isExecutable)
+                            {
+                                Console.WriteLine($"{commandType} is {fullPath}");
+                                found = true;  
+                            }
+                        }
+                    }
+
+                    if (!found)
+                    {
+                        Console.WriteLine($"{commandType}: not found");
+                    }
                 }
             }
             else if (command.StartsWith("echo"))
