@@ -28,6 +28,10 @@ class Program
                 {
                     Console.WriteLine($"{commandType} is a shell builtin");
                 }
+                else
+                {
+                    Console.WriteLine($"{command}: command not found");
+                }
             }
             else if (command.StartsWith("echo"))
             {
