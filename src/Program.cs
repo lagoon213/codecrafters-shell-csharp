@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 class Program
 {
     static void Main()
@@ -43,6 +45,22 @@ class Program
             {
                 Console.WriteLine(command.Substring("echo".Length + 1));
             }
+            else if (GetExecutablePath(command.Split(' ')[0]) is string executablePath)
+            {
+                string[] arguments = command.Split(' ');
+                
+                var startInfo = new ProcessStartInfo();
+
+                startInfo.FileName = executablePath;
+
+                for (int i = 1; i < arguments.Length; i++)
+                {
+                    startInfo.ArgumentList.Add(arguments[i]);
+                }
+
+                Process process = Process.Start(startInfo);
+                process.WaitForExit();
+            }
             else
             {
                 Console.WriteLine($"{command}: command not found");
@@ -58,6 +76,11 @@ class Program
                 var fullPath = Path.Combine(dir, command);
                 if (File.Exists(fullPath))
                 {
+                    if (OperatingSystem.IsWindows())
+                    {
+                        return fullPath;
+                    }
+                    
                     UnixFileMode fileMode = File.GetUnixFileMode(fullPath);
 
                     bool isExecutable = (fileMode & UnixFileMode.UserExecute) != 0 ||
