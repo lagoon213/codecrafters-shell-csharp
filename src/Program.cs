@@ -10,7 +10,8 @@ class Program
         {
             "exit",
             "echo",
-            "type"
+            "type",
+            "pwd"
         };
 
         
@@ -60,6 +61,10 @@ class Program
 
                 Process process = Process.Start(startInfo);
                 process.WaitForExit();
+            }
+            else if (command.StartsWith("pwd"))
+            {
+                Console.WriteLine(Directory.GetCurrentDirectory());
             }
             else
             {
