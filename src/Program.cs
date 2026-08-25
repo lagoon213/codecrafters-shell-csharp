@@ -11,7 +11,8 @@ class Program
             "exit",
             "echo",
             "type",
-            "pwd"
+            "pwd",
+            "cd"
         };
 
         
@@ -65,6 +66,18 @@ class Program
             else if (command.StartsWith("pwd"))
             {
                 Console.WriteLine(Directory.GetCurrentDirectory());
+            }
+            else if (command.StartsWith("cd"))
+            {
+                string path = command.Split(' ')[1];
+                try
+                {
+                   Directory.SetCurrentDirectory(path); 
+                }
+                catch
+                {
+                    Console.WriteLine($"cd: {path}: No such file or directory");
+                }
             }
             else
             {
