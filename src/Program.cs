@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Text;
 
 class Program
 {
@@ -23,13 +25,42 @@ class Program
 
             string command = Console.ReadLine();
 
-            if (command.StartsWith("exit"))
+            bool isSingleQuotes = false;
+            List<string> Arguments = new();
+            StringBuilder currentArgument = new();
+
+            foreach (char c in command)
+            {
+                if (c == '\'')
+                {
+                    isSingleQuotes = !isSingleQuotes;
+                }
+                else if (c == ' ' && !isSingleQuotes)
+                {
+                    if (currentArgument.Length > 0)
+                    {
+                        Arguments.Add(currentArgument.ToString());
+                        currentArgument.Clear();
+                    }
+                }
+                else
+                {
+                    currentArgument.Append(c);
+                }
+            }
+            if (currentArgument.Length > 0)
+            {
+                Arguments.Add(currentArgument.ToString());
+            }
+
+
+            if (Arguments[0] == "exit")
             {
                 break;
             }
-            else if (command.StartsWith("type"))
+            else if (Arguments[0] == "type")
             {
-                string commandType = command.Substring("type".Length + 1);
+                string commandType = Arguments[1];
                 if (builtInCommands.Contains(commandType))
                 {
                     Console.WriteLine($"{commandType} is a shell builtin");
@@ -43,31 +74,15 @@ class Program
                     Console.WriteLine($"{commandType}: not found");
                 }
             }
-            else if (command.StartsWith("echo"))
+            else if (Arguments[0] == "echo")
             {
-                Console.WriteLine(command.Substring("echo".Length + 1));
+                Console.WriteLine(string.Join(" ", Arguments.Skip(1)));
             }
-            else if (GetExecutablePath(command.Split(' ')[0]) is string executablePath)
-            {
-                string[] arguments = command.Split(' ');
-                
-                var startInfo = new ProcessStartInfo();
-
-                startInfo.FileName = arguments[0];
-
-                for (int i = 1; i < arguments.Length; i++)
-                {
-                    startInfo.ArgumentList.Add(arguments[i]);
-                }
-
-                Process process = Process.Start(startInfo);
-                process.WaitForExit();
-            }
-            else if (command.StartsWith("pwd"))
+            else if (Arguments[0] == "pwd")
             {
                 Console.WriteLine(Directory.GetCurrentDirectory());
             }
-            else if (command.StartsWith("cd"))
+            else if (Arguments[0] == "cd")
             {
                 string path = command.Split(' ')[1];
                 try
@@ -91,12 +106,27 @@ class Program
                     Console.WriteLine($"cd: {path}: No such file or directory");
                 }
             }
+            else if (GetExecutablePath(Arguments[0]) is string executablePath)
+            {        
+                var startInfo = new ProcessStartInfo();
+
+                startInfo.FileName = Arguments[0];
+
+                for (int i = 1; i < Arguments.Count; i++)
+                {
+                    startInfo.ArgumentList.Add(Arguments[i]);
+                }
+
+                Process process = Process.Start(startInfo);
+                process.WaitForExit();
+            }
             else
             {
                 Console.WriteLine($"{command}: command not found");
             }
         }
     }
+
     public static string GetExecutablePath(string command)
         {
             var path = Environment.GetEnvironmentVariable("PATH");
