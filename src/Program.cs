@@ -26,16 +26,21 @@ class Program
             string command = Console.ReadLine();
 
             bool isSingleQuotes = false;
+            bool isDoubleQuotes = false;
             List<string> Arguments = new();
             StringBuilder currentArgument = new();
 
             foreach (char c in command)
             {
-                if (c == '\'')
+                if (c == '\'' && !isDoubleQuotes)
                 {
                     isSingleQuotes = !isSingleQuotes;
                 }
-                else if (c == ' ' && !isSingleQuotes)
+                else if (c == '\"' && !isSingleQuotes)
+                {
+                    isDoubleQuotes = !isDoubleQuotes;
+                }
+                else if (c == ' ' && !isSingleQuotes && !isDoubleQuotes)
                 {
                     if (currentArgument.Length > 0)
                     {
