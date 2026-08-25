@@ -4,21 +4,34 @@ class Program
     {
         bool isRunning = true;
 
-        string exitCommand = "exit";
-        string echoCommand = "echo";
+        string[] builtInCommands = new string[]
+        {
+            "exit",
+            "echo",
+            "type"
+        };
     
         while (isRunning)
         {
             Console.Write("$ ");
 
             string command = Console.ReadLine();
-            if (command.StartsWith(exitCommand))
+
+            if (command.StartsWith("exit"))
             {
                 break;
             }
-            if (command.StartsWith(echoCommand))
+            else if (command.StartsWith("type"))
             {
-                Console.WriteLine(command.Substring(echoCommand.Length + 1));
+                string commandType = command.Substring("type".Length + 1);
+                if (builtInCommands.Contains(commandType))
+                {
+                    Console.WriteLine($"{commandType} is a shell builtin");
+                }
+            }
+            else if (command.StartsWith("echo"))
+            {
+                Console.WriteLine(command.Substring("echo".Length + 1));
             }
             else
             {
