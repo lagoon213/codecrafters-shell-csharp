@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Formats.Asn1;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -27,25 +28,30 @@ class Program
 
             bool isSingleQuotes = false;
             bool isDoubleQuotes = false;
-            bool isBackSlash = false;
+            bool escapeNext = false;
             List<string> Arguments = new();
             StringBuilder currentArgument = new();
 
             foreach (char c in command)
             {
-                if (c == '\\')
+                if (escapeNext)
                 {
-                    isBackSlash = true;
+                    escapeNext = false;
+                    currentArgument.Append(c);
                 }
-                else if (c == '\'' && !isDoubleQuotes && !isBackSlash)
+                else if (c == '\\')
+                {
+                    escapeNext = true;
+                }
+                else if (c == '\'' && !isDoubleQuotes)
                 {
                     isSingleQuotes = !isSingleQuotes;
                 }
-                else if (c == '\"' && !isSingleQuotes && !isBackSlash)
+                else if (c == '\"' && !isSingleQuotes)
                 {
                     isDoubleQuotes = !isDoubleQuotes;
                 }
-                else if (c == ' ' && !isSingleQuotes && !isDoubleQuotes && !isBackSlash)
+                else if (c == ' ' && !isSingleQuotes && !isDoubleQuotes)
                 {
                     if (currentArgument.Length > 0)
                     {
