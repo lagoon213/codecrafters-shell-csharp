@@ -31,6 +31,12 @@ class Program
         while (true)
         {
             Console.Write("$ ");
+            StringBuilder input = new();
+
+            ConsoleKeyInfo key = Console.ReadKey(intercept: true);
+
+            input.Append(key);
+            Console.Write(input);
 
             string command = Console.ReadLine();
 
