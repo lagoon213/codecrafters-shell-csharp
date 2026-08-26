@@ -22,7 +22,9 @@ class Program
         {
             ">",
             "1>",
-            "2>"
+            "2>",
+            ">>",
+            "1>>"
         };
 
         while (true)
@@ -42,6 +44,7 @@ class Program
 
             bool shouldRedirectOutput = redirect.redirectOutput;
             bool shouldRedirectError = redirect.redirectError;
+            bool shouldAppendOutput = redirect.appendOutput;
             string? fileName = redirect.fileName;
 
             if(arguments[0] == "cd")
@@ -50,7 +53,7 @@ class Program
             }
             else if (arguments[0] == "echo")
             {
-                ExecuteEcho(arguments, shouldRedirectOutput, shouldRedirectError, fileName);
+                ExecuteEcho(arguments, shouldRedirectOutput, shouldRedirectError, shouldAppendOutput, fileName);
             }
             else if (arguments[0] == "type")
             {
@@ -62,7 +65,7 @@ class Program
             }
             else
             {
-                ExecuteExternal(arguments, shouldRedirectOutput, shouldRedirectError, fileName, command);
+                ExecuteExternal(arguments, shouldRedirectOutput, shouldRedirectError, shouldAppendOutput, fileName, command);
             }  
         }
     }
@@ -119,13 +122,13 @@ class Program
             }
     }
 
-    public static (bool redirectOutput, bool redirectError, string? fileName) ParseRedirection(List<string> arguments, string[] redirectOperators)
+    public static (bool redirectOutput, bool redirectError, bool appendOutput, string? fileName) ParseRedirection(List<string> arguments, string[] redirectOperators)
     {
         string? foundOperator = redirectOperators.FirstOrDefault(op => arguments.Contains(op));
 
         if (foundOperator == null)
         {
-            return(false, false, null);
+            return(false, false, false, null);
         }
 
         int index = arguments.IndexOf(foundOperator);
@@ -134,17 +137,19 @@ class Program
 
         if (foundOperator == ">" || foundOperator == "1>")
         {
-            bool redirectOutput = true;
-            return(true, false, fileName);
+            return(true, false, false, fileName);
         }
         else if (foundOperator == "2>")
         {
-            bool redirectError = true;
-            return(false, true, fileName);
+            return(false, true, false, fileName);
+        }
+        else if(foundOperator == ">>" || foundOperator == "1>>")
+        {
+            return(false, false, true, fileName);
         }
         else
         {
-            return(false, false, null);
+            return(false, false, false, null);
         }
     }
 
@@ -195,14 +200,17 @@ class Program
         }
     }
 
-    public static void ExecuteEcho(List<string> arguments, bool shouldRedirectOutput, bool shouldRedirectError, string fileName)
+    public static void ExecuteEcho(List<string> arguments, bool shouldRedirectOutput, bool shouldRedirectError, bool shouldAppendOutput, string fileName)
     {
         if (arguments[0] == "echo")
         {
             string echoOutput = string.Join(" ", arguments.Skip(1));
             
-
-            if (shouldRedirectOutput)
+            if (shouldAppendOutput)
+            {
+                File.AppendAllText(fileName, echoOutput + Environment.NewLine);
+            }
+            else if (shouldRedirectOutput)
             {
                 File.WriteAllText(fileName!, echoOutput + Environment.NewLine);
             }
@@ -218,7 +226,7 @@ class Program
         }
     }
 
-    public static void ExecuteExternal(List<string> arguments, bool shouldRedirectOutput, bool shouldRedirectError, string fileName, string command)
+    public static void ExecuteExternal(List<string> arguments, bool shouldRedirectOutput, bool shouldRedirectError, bool shouldAppendOutput, string fileName, string command)
     {
         if (GetExecutablePath(arguments[0]) is string executablePath)
             {        
@@ -231,7 +239,7 @@ class Program
                     startInfo.ArgumentList.Add(arguments[i]);
                 }
 
-                if (shouldRedirectOutput)
+                if (shouldRedirectOutput || shouldAppendOutput)
                 {
                     startInfo.RedirectStandardOutput = true;
                 }
@@ -253,6 +261,12 @@ class Program
                     string processError = process.StandardError.ReadToEnd();
 
                     File.WriteAllText(fileName, processError);
+                }
+                else if (shouldAppendOutput)
+                {
+                    string processOutput = process.StandardOutput.ReadToEnd();
+
+                    File.AppendAllText(fileName, processOutput);
                 }
                 process.WaitForExit();
             }
