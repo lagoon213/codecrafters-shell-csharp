@@ -1,15 +1,15 @@
 using System.Diagnostics;
 using System.Formats.Asn1;
+using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices.Marshalling;
 using System.Text;
 
 class Program
 {
     static void Main()
     {
-        bool isRunning = true;
-
-        string[] builtInCommands = new string[]
+        string[] builtInCommands = 
         {
             "exit",
             "echo",
@@ -18,51 +18,80 @@ class Program
             "cd"
         };
 
-        string[] redirectOperator = new string[]
+        string[] redirectOperators = 
         {
             ">",
-            "1>"
+            "1>",
+            "2>"
         };
 
-        while (isRunning)
+        while (true)
         {
             Console.Write("$ ");
 
             string command = Console.ReadLine();
-            string fileName = null;
-            string output = null;
-            bool shouldRedirect = false;
 
-            List<string> Arguments = CheckCommandForQuotesAndReturnArguments(command);
+            List<string> arguments = ParseCommand(command);
 
 
-            if (Arguments[0] == "exit")
+            if (arguments[0] == "exit")
             {
                 break;
             }
-            if (redirectOperator.Any(op => Arguments.Contains(op)))
+            var redirect = ParseRedirection(arguments, redirectOperators);
+
+            bool shouldRedirectOutput = redirect.redirectOutput;
+            bool shouldRedirectError = redirect.redirectError;
+            string? fileName = redirect.fileName;
+
+            if(arguments[0] == "cd")
             {
-                string? foundOperator =
-                    redirectOperator.FirstOrDefault(op => Arguments.Contains(op));
+                ExecuteCd(arguments, shouldRedirectOutput, fileName);
+            }
+            else if (arguments[0] == "echo")
+            {
+                ExecuteEcho(arguments, shouldRedirectOutput, shouldRedirectError, fileName);
+            }
+            else if (arguments[0] == "type")
+            {
+                ExecuteType(arguments, shouldRedirectOutput, fileName, builtInCommands);
+            }
+            else if (arguments[0] == "pwd")
+            {
+                ExecutePwd(arguments, shouldRedirectOutput, fileName);
+            }
+            else
+            {
+                ExecuteExternal(arguments, shouldRedirectOutput, shouldRedirectError, fileName, command);
+            }  
+        }
+    }
 
-                if (foundOperator != null)
+    public static void ExecutePwd(List<string> arguments, bool shouldRedirectOutput, string fileName)
+    {
+        if (arguments[0] == "pwd")
+            {
+                var PwdOutput = Directory.GetCurrentDirectory();
+                if (shouldRedirectOutput)
                 {
-                    shouldRedirect = true;
-
-                    int index = Arguments.IndexOf(foundOperator);
-
-                    fileName = Arguments[index + 1];
-
-                    Arguments.RemoveRange(index, Arguments.Count - index);
+                    File.WriteAllText(fileName, PwdOutput + Environment.NewLine);
+                }
+                else
+                {
+                    Console.WriteLine(PwdOutput);
                 }
             }
-            if (Arguments[0] == "type")
+    }
+
+    public static void ExecuteType(List<string> arguments, bool shouldRedirectOutput, string fileName, string[] builtInCommands)
+    {
+        if (arguments[0] == "type")
             {
-                string commandType = Arguments[1];
+                string commandType = arguments[1];
                 
                 if (builtInCommands.Contains(commandType))
                 {
-                    if (shouldRedirect)
+                    if (shouldRedirectOutput)
                     {
                         File.WriteAllText(fileName, $"{commandType} is a shell builtin" + Environment.NewLine);
                     }
@@ -70,7 +99,7 @@ class Program
                 }
                 else if (GetExecutablePath(commandType) is string executablePath)
                 {
-                    if (shouldRedirect)
+                    if (shouldRedirectOutput)
                     {
                         File.WriteAllText(fileName, $"{commandType} is {executablePath}" + Environment.NewLine);
                     }
@@ -78,84 +107,152 @@ class Program
                 }
                 else
                 {
-                    if (shouldRedirect)
+                    if (shouldRedirectOutput)
                     {
                         File.WriteAllText(fileName, $"{commandType}: not found" + Environment.NewLine);
                     }
-                    Console.WriteLine($"{commandType}: not found");
+                    else
+                    {
+                        Console.WriteLine($"{commandType}: not found");
+                    }
                 }
             }
-            else if (Arguments[0] == "echo")
-            {
-                string echoOutput = string.Join(" ", Arguments.Skip(1));
+    }
 
-                if (shouldRedirect)
+    public static (bool redirectOutput, bool redirectError, string? fileName) ParseRedirection(List<string> arguments, string[] redirectOperators)
+    {
+        string? foundOperator = redirectOperators.FirstOrDefault(op => arguments.Contains(op));
+
+        if (foundOperator == null)
+        {
+            return(false, false, null);
+        }
+
+        int index = arguments.IndexOf(foundOperator);
+        string fileName = arguments[index +1];
+        arguments.RemoveRange(index, arguments.Count - index);
+
+        if (foundOperator == ">" || foundOperator == "1>")
+        {
+            bool redirectOutput = true;
+            return(true, false, fileName);
+        }
+        else if (foundOperator == "2>")
+        {
+            bool redirectError = true;
+            return(false, true, fileName);
+        }
+        else
+        {
+            return(false, false, null);
+        }
+    }
+
+    // public static (bool shouldRedirectOutput, string? fileName) ParseRedirection(List<string> arguments, string[] redirectOperators)
+    // {
+    //     string? foundOperator =
+    //         redirectOperators.FirstOrDefault(op => arguments.Contains(op));
+
+    //     if (foundOperator == null)
+    //     {
+    //         return (false, null);
+    //     }
+
+    //     int index = arguments.IndexOf(foundOperator);
+
+    //     string fileName = arguments[index + 1];
+
+    //     arguments.RemoveRange(index, arguments.Count - index);
+
+    //     return (true, fileName);
+    // }
+
+    public static void ExecuteCd(List<string> arguments, bool shouldRedirectOutput, string fileName)
+    {
+        if (arguments[0] == "cd")
+        {
+            string path = arguments[1];
+            try
+            {
+                if (path == "~")
                 {
-                    File.WriteAllText(fileName, echoOutput + Environment.NewLine);
+                    string homeDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+                    if (homeDirectory != null)
+                    {
+                        Directory.SetCurrentDirectory(homeDirectory);
+                    }
                 }
                 else
                 {
-                    Console.WriteLine(echoOutput);
+                    Directory.SetCurrentDirectory(path); 
                 }
             }
-            else if (Arguments[0] == "pwd")
+            catch
             {
-                var PwdOutput = Directory.GetCurrentDirectory();
-                if (shouldRedirect)
-                {
-                    File.WriteAllText(fileName, PwdOutput + Environment.NewLine);
-                }
-                Console.WriteLine(PwdOutput);
+                Console.WriteLine($"cd: {path}: No such file or directory");
             }
-            else if (Arguments[0] == "cd")
-            {
-                string path = Arguments[1];
-                try
-                {
-                    if (path == "~")
-                    {
-                        string homeDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        }
+    }
 
-                        if (homeDirectory != null)
-                        {
-                            Directory.SetCurrentDirectory(homeDirectory);
-                        }
-                    }
-                    else
-                    {
-                        Directory.SetCurrentDirectory(path); 
-                    }
-                }
-                catch
-                {
-                    Console.WriteLine($"cd: {path}: No such file or directory");
-                }
+    public static void ExecuteEcho(List<string> arguments, bool shouldRedirectOutput, bool shouldRedirectError, string fileName)
+    {
+        if (arguments[0] == "echo")
+        {
+            string echoOutput = string.Join(" ", arguments.Skip(1));
+            
+
+            if (shouldRedirectOutput)
+            {
+                File.WriteAllText(fileName!, echoOutput + Environment.NewLine);
             }
-            else if (GetExecutablePath(Arguments[0]) is string executablePath)
+            else
+            {
+                Console.WriteLine(echoOutput);
+            }
+
+            if (shouldRedirectError)
+            {
+                File.WriteAllText(fileName!, "");
+            }
+        }
+    }
+
+    public static void ExecuteExternal(List<string> arguments, bool shouldRedirectOutput, bool shouldRedirectError, string fileName, string command)
+    {
+        if (GetExecutablePath(arguments[0]) is string executablePath)
             {        
                 var startInfo = new ProcessStartInfo();
 
-                startInfo.FileName = Arguments[0];
+                startInfo.FileName = arguments[0];
 
-                for (int i = 1; i < Arguments.Count; i++)
+                for (int i = 1; i < arguments.Count; i++)
                 {
-                    startInfo.ArgumentList.Add(Arguments[i]);
+                    startInfo.ArgumentList.Add(arguments[i]);
                 }
 
-                if (shouldRedirect)
+                if (shouldRedirectOutput)
                 {
                     startInfo.RedirectStandardOutput = true;
+                }
+                else if (shouldRedirectError)
+                {
+                   startInfo.RedirectStandardError = true; 
                 }
 
                 Process process = Process.Start(startInfo);
 
-                if (shouldRedirect)
+                if (shouldRedirectOutput)
                 {
                     string processOutput = process.StandardOutput.ReadToEnd();
 
-                    process.WaitForExit();
-
                     File.WriteAllText(fileName, processOutput);
+                }
+                else if (shouldRedirectError)
+                {
+                    string processError = process.StandardError.ReadToEnd();
+
+                    File.WriteAllText(fileName, processError);
                 }
                 process.WaitForExit();
             }
@@ -163,16 +260,15 @@ class Program
             {
                 Console.WriteLine($"{command}: command not found");
             }
-        }
     }
 
-    public static List<string> CheckCommandForQuotesAndReturnArguments(string command)
+    public static List<string> ParseCommand(string command)
     {
         
             bool isSingleQuotes = false;
             bool isDoubleQuotes = false;
             bool escapeNext = false;
-            List<string> Arguments = new();
+            List<string> arguments = new();
             StringBuilder currentArgument = new();
 
             foreach (char c in command)
@@ -198,7 +294,7 @@ class Program
                 {
                     if (currentArgument.Length > 0)
                     {
-                        Arguments.Add(currentArgument.ToString());
+                        arguments.Add(currentArgument.ToString());
                         currentArgument.Clear();
                     }
                 }
@@ -209,10 +305,10 @@ class Program
             }
             if (currentArgument.Length > 0)
             {
-                Arguments.Add(currentArgument.ToString());
+                arguments.Add(currentArgument.ToString());
             }
 
-            return Arguments;
+            return arguments;
     }
 
     public static string GetExecutablePath(string command)
