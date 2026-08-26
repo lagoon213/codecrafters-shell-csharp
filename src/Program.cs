@@ -39,7 +39,7 @@ class Program
                     escapeNext = false;
                     currentArgument.Append(c);
                 }
-                else if (c == '\\')
+                else if (c == '\\' && !isSingleQuotes)
                 {
                     escapeNext = true;
                 }
