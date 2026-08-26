@@ -27,20 +27,25 @@ class Program
 
             bool isSingleQuotes = false;
             bool isDoubleQuotes = false;
+            bool isBackSlash = false;
             List<string> Arguments = new();
             StringBuilder currentArgument = new();
 
             foreach (char c in command)
             {
-                if (c == '\'' && !isDoubleQuotes)
+                if (c == '\\')
+                {
+                    isBackSlash = true;
+                }
+                else if (c == '\'' && !isDoubleQuotes && !isBackSlash)
                 {
                     isSingleQuotes = !isSingleQuotes;
                 }
-                else if (c == '\"' && !isSingleQuotes)
+                else if (c == '\"' && !isSingleQuotes && !isBackSlash)
                 {
                     isDoubleQuotes = !isDoubleQuotes;
                 }
-                else if (c == ' ' && !isSingleQuotes && !isDoubleQuotes)
+                else if (c == ' ' && !isSingleQuotes && !isDoubleQuotes && !isBackSlash)
                 {
                     if (currentArgument.Length > 0)
                     {
