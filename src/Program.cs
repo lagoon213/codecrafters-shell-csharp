@@ -18,14 +18,157 @@ class Program
             "cd"
         };
 
-        
-    
+        string[] redirectOperator = new string[]
+        {
+            ">",
+            "1>"
+        };
+
         while (isRunning)
         {
             Console.Write("$ ");
 
             string command = Console.ReadLine();
+            string fileName = null;
+            string output = null;
+            bool shouldRedirect = false;
 
+            List<string> Arguments = CheckCommandForQuotesAndReturnArguments(command);
+
+
+            if (Arguments[0] == "exit")
+            {
+                break;
+            }
+            if (redirectOperator.Any(op => Arguments.Contains(op)))
+            {
+                string? foundOperator =
+                    redirectOperator.FirstOrDefault(op => Arguments.Contains(op));
+
+                if (foundOperator != null)
+                {
+                    shouldRedirect = true;
+
+                    int index = Arguments.IndexOf(foundOperator);
+
+                    fileName = Arguments[index + 1];
+
+                    Arguments.RemoveRange(index, Arguments.Count - index);
+                }
+            }
+            if (Arguments[0] == "type")
+            {
+                string commandType = Arguments[1];
+                
+                if (builtInCommands.Contains(commandType))
+                {
+                    if (shouldRedirect)
+                    {
+                        File.WriteAllText(fileName, $"{commandType} is a shell builtin" + Environment.NewLine);
+                    }
+                    Console.WriteLine($"{commandType} is a shell builtin");
+                }
+                else if (GetExecutablePath(commandType) is string executablePath)
+                {
+                    if (shouldRedirect)
+                    {
+                        File.WriteAllText(fileName, $"{commandType} is {executablePath}" + Environment.NewLine);
+                    }
+                    Console.WriteLine($"{commandType} is {executablePath}");
+                }
+                else
+                {
+                    if (shouldRedirect)
+                    {
+                        File.WriteAllText(fileName, $"{commandType}: not found" + Environment.NewLine);
+                    }
+                    Console.WriteLine($"{commandType}: not found");
+                }
+            }
+            else if (Arguments[0] == "echo")
+            {
+                string echoOutput = string.Join(" ", Arguments.Skip(1));
+
+                if (shouldRedirect)
+                {
+                    File.WriteAllText(fileName, echoOutput + Environment.NewLine);
+                }
+                else
+                {
+                    Console.WriteLine(echoOutput);
+                }
+            }
+            else if (Arguments[0] == "pwd")
+            {
+                var PwdOutput = Directory.GetCurrentDirectory();
+                if (shouldRedirect)
+                {
+                    File.WriteAllText(fileName, PwdOutput + Environment.NewLine);
+                }
+                Console.WriteLine(PwdOutput);
+            }
+            else if (Arguments[0] == "cd")
+            {
+                string path = Arguments[1];
+                try
+                {
+                    if (path == "~")
+                    {
+                        string homeDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+                        if (homeDirectory != null)
+                        {
+                            Directory.SetCurrentDirectory(homeDirectory);
+                        }
+                    }
+                    else
+                    {
+                        Directory.SetCurrentDirectory(path); 
+                    }
+                }
+                catch
+                {
+                    Console.WriteLine($"cd: {path}: No such file or directory");
+                }
+            }
+            else if (GetExecutablePath(Arguments[0]) is string executablePath)
+            {        
+                var startInfo = new ProcessStartInfo();
+
+                startInfo.FileName = Arguments[0];
+
+                for (int i = 1; i < Arguments.Count; i++)
+                {
+                    startInfo.ArgumentList.Add(Arguments[i]);
+                }
+
+                if (shouldRedirect)
+                {
+                    startInfo.RedirectStandardOutput = true;
+                }
+
+                Process process = Process.Start(startInfo);
+
+                if (shouldRedirect)
+                {
+                    string processOutput = process.StandardOutput.ReadToEnd();
+
+                    process.WaitForExit();
+
+                    File.WriteAllText(fileName, processOutput);
+                }
+                process.WaitForExit();
+            }
+            else
+            {
+                Console.WriteLine($"{command}: command not found");
+            }
+        }
+    }
+
+    public static List<string> CheckCommandForQuotesAndReturnArguments(string command)
+    {
+        
             bool isSingleQuotes = false;
             bool isDoubleQuotes = false;
             bool escapeNext = false;
@@ -69,78 +212,7 @@ class Program
                 Arguments.Add(currentArgument.ToString());
             }
 
-
-            if (Arguments[0] == "exit")
-            {
-                break;
-            }
-            else if (Arguments[0] == "type")
-            {
-                string commandType = Arguments[1];
-                if (builtInCommands.Contains(commandType))
-                {
-                    Console.WriteLine($"{commandType} is a shell builtin");
-                }
-                else if (GetExecutablePath(commandType) is string executablePath)
-                {
-                    Console.WriteLine($"{commandType} is {executablePath}");
-                }
-                else
-                {
-                    Console.WriteLine($"{commandType}: not found");
-                }
-            }
-            else if (Arguments[0] == "echo")
-            {
-                Console.WriteLine(string.Join(" ", Arguments.Skip(1)));
-            }
-            else if (Arguments[0] == "pwd")
-            {
-                Console.WriteLine(Directory.GetCurrentDirectory());
-            }
-            else if (Arguments[0] == "cd")
-            {
-                string path = command.Split(' ')[1];
-                try
-                {
-                    if (path == "~")
-                    {
-                        string homeDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-
-                        if (homeDirectory != null)
-                        {
-                            Directory.SetCurrentDirectory(homeDirectory);
-                        }
-                    }
-                    else
-                    {
-                        Directory.SetCurrentDirectory(path); 
-                    }
-                }
-                catch
-                {
-                    Console.WriteLine($"cd: {path}: No such file or directory");
-                }
-            }
-            else if (GetExecutablePath(Arguments[0]) is string executablePath)
-            {        
-                var startInfo = new ProcessStartInfo();
-
-                startInfo.FileName = Arguments[0];
-
-                for (int i = 1; i < Arguments.Count; i++)
-                {
-                    startInfo.ArgumentList.Add(Arguments[i]);
-                }
-
-                Process process = Process.Start(startInfo);
-                process.WaitForExit();
-            }
-            else
-            {
-                Console.WriteLine($"{command}: command not found");
-            }
-        }
+            return Arguments;
     }
 
     public static string GetExecutablePath(string command)
